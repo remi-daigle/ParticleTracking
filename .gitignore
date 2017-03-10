@@ -17,6 +17,10 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+#CHRIS' FILES TO IGNORE SINCE THEY ARE FULL OF HUGE DATA
+ConData
+Rawdata_extracted
+
 # =========================
 # Operating System Files
 # =========================
