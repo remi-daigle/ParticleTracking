@@ -21,6 +21,9 @@ $RECYCLE.BIN/
 ConData
 Rawdata_extracted
 
+#Annoying updates
+*.Rhistory
+
 # =========================
 # Operating System Files
 # =========================
