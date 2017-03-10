@@ -15,9 +15,9 @@ require(readr)
 require(rgdal)
 require(rgeos)
 require(maptools)
-#setwd("C:/Christopher_MSc/Remi_data/ParticleTracking")
+#setwd("C:/Christopher_MSc/Github/ParticleTracking")
 getwd()
-#YAy
+
 
 ############################################################
 ############################################################
