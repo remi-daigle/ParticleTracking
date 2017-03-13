@@ -138,10 +138,26 @@ grid <- readOGR("./cuke_present/StudyExtent/Starting_grid", "grid")
 My_BC_projection <- CRS("+proj=aea +lat_1=47 +lat_2=54 +lat_0=40 +lon_0=-130 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0 ")
 ConPoly <- spTransform(grid, My_BC_projection) #use your custom BC projection for this
 ConPoly <- gUnaryUnion(ConPoly)
+plot(ConPoly)
+ConPoly@proj4string
+Ecozones@proj4string
+##Adding dataframe to convert back to SpatialPolygonsDataFrame - if need be....
+#ConPoly_ID <- row.names(ConPoly)
+#ConPoly_ID <- as.data.frame(ConPoly_ID)
+## And add the data back in
+#ConPoly <- SpatialPolygonsDataFrame(ConPoly, ConPoly_ID)
+#rm(ConPoly_ID)
 
-Ecozones <- readOGR("./cuke_present/StudyExtent/BC_Ecozones", "Ecozones_BC")
 
 #Clipping to your study extent
+Ecozones <- readOGR("./cuke_present/StudyExtent/BC_Ecozones", "Ecozones_BC")
+#Need to remove offshore ecoregion - this is messy
+Ecozones@data$Clipping <- c(1,2,99,3)
+Ecozones@data
+Ecozones <- Ecozones[Ecozones$Clipping < 99,]
+plot(Ecozones, add = T)
+require(sp)
+Ecozones_new <- over(grid, Ecozones)
 
 
 
