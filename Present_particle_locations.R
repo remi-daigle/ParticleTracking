@@ -18,6 +18,157 @@ require(maptools)
 #setwd("C:/Christopher_MSc/Github/ParticleTracking")
 getwd()
 
+
+########################################################################
+########################################################################
+### [2] Loading up larval release points
+
+#Acquiring files
+filenames <- list.files(path = "./cuke_present/ReleaseLocations", pattern="rl_.", full.names=TRUE,recursive=T)
+
+# load all files into a list, read_csv is much faster than read.csv
+rllist <- lapply(filenames, read_csv,
+                 col_names = c("long0","lat0","Z0","delay","site0"),
+                 col_types = cols("d","d","i","i","i")
+                 )
+
+# set the names of the items in the list, so that you know which file it came from
+rllist <- setNames(rllist,filenames)
+
+# rbind the list
+rl <- rbindlist(rllist, idcol="filename")
+
+rl$bin <- gsub(".*rl_|.txt.*", "",rl$filename)
+head(rl)
+rm(rllist)
+
+#Creating csv file ith all starting locations
+write.csv(rl, file="./output/release_settlement/release_locations.csv", row.names = F)
+
+
+### [2b] Creating map of release locations
+release_points <- subset(rl, select = c(long0, lat0, Z0))
+release_points <- as.data.frame(release_points)
+
+xy <- release_points[,c(1,2)]
+grid <- readOGR("./cuke_present/StudyExtent/Starting_grid", "grid") #Using Remi's grid to get NAD projection
+NAD_projection <- proj4string(grid)
+My_BC_projection <- CRS("+proj=aea +lat_1=47 +lat_2=54 +lat_0=40 +lon_0=-130 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0 ")
+
+
+release_larvae <- SpatialPointsDataFrame(coords = xy, data = release_points, proj4string = CRS(NAD_projection))
+release_larvae <- spTransform(release_larvae, My_BC_projection) #use your custom BC projection for this
+rm(grid, xy)
+plot(release_larvae)
+
+#write out points
+writeOGR(release_larvae, dsn = "./output/shapefiles", layer = "release_points", driver = "ESRI Shapefile", overwrite = TRUE)
+
+
+#Associate points with where they were released from #Do this later
+#require(spatialEco)
+#release_larvae_map <- point.in.poly(release_larvae, ConPoly)
+#head(release_larvae_map@data)
+#plot(release_larvae_map)
+
+
+########################################################################
+########################################################################
+#[3] Identifying settlement locations and linking to release locations
+
+# List the particle tracking files for that particular year and pld
+year <- 1999
+pld <- 120
+
+#Acquiring files
+filenames <- list.files(path=paste0("./cuke_present/ConData/G",year), pattern=glob2rx(paste0("*para    1",formatC(pld+1, width = 3, format = "d", flag = "0"),"*")), full.names=TRUE,recursive=T)
+
+# load all files into a list, read_csv is much faster than read.csv
+datalist <- lapply(filenames, read_csv,
+                   col_names = c("long","lat","Z","Out","site"),
+                   col_types = cols("d","d","d","i","i")
+                   )
+
+# set the names of the items in the list, so that you know which file it came from
+datalist <- setNames(datalist,filenames)
+
+# rbind the list
+dataset <- rbindlist(datalist, idcol="filename")
+dataset$site <- NA
+rm(datalist)
+
+
+#This process takes a long time ~
+
+ptm <- proc.time()
+#Reshaping dataset to take filename info and turning it into columns
+dataset <- dataset %>%
+  mutate(temp=substr(filename,24,nchar(filename))) %>%
+  separate(temp,c("temp_type_year","rday","bin","time"),"/",convert=TRUE) %>% 
+  separate(temp_type_year,c("type","year"),sep=1,convert=TRUE) %>% 
+  mutate(time=as.integer(substr(time,12,15)))
+
+#Linking release locations to settlement locations based on bin
+for(i in unique(dataset$bin)){
+  x <- rl$bin==i
+  y <- dataset$bin==i
+  dataset$long0[y] <- rl$long0[x]
+  dataset$lat0[y] <- rl$lat0[x]
+  dataset$Z0[y] <- rl$Z0[x]
+  dataset$delay[y] <- rl$delay[x]
+  dataset$site0[y] <- rl$site0[x]
+}
+head(dataset)
+proc.time() - ptm
+
+#Write out dataset - takes a long time
+#write.csv(dataset, "./output/connectivity_tables/dataset.csv", row.names = F) #6 minutes
+
+
+#Add larvae IDs to dataset
+Con_df <- dataset
+Con_df <- subset(Con_df, select = c(long0, lat0, Z0, long, lat, Z, year, rday))
+Con_df$larvae_ID <- row.names(Con_df)
+View(Con_df)
+
+#Write out Con_df - takes a long time
+write.csv(Con_df, "./output/connectivity_tables/Con_df.csv", row.names = F)
+
+
+Release_df <- subset(Con_df, select = c(long0, lat0, Z0, larvae_ID))
+Settle_df <- subset(Con_df, select = c(long, lat, Z, larvae_ID, year, rday))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#####################extra TO BE REINSERTED
+
+
 ############################################################
 ############################################################
 ### [1] Creating connectivity grid
@@ -62,107 +213,14 @@ writeOGR(ConPoly, dsn = "./output", "ConPoly",
 
 
 
-########################################################################
-########################################################################
-### [2] Loading up larval release points
 
-#Acquiring files
-filenames <- list.files(path = "./cuke_present/ReleaseLocations", pattern="rl_.", full.names=TRUE,recursive=T)
-
-# load all files into a list, read_csv is much faster than read.csv
-rllist <- lapply(filenames, read_csv,
-                 col_names = c("long0","lat0","Z0","delay","site0"),
-                 col_types = cols("d","d","i","i","i")
-                 )
-
-# set the names of the items in the list, so that you know which file it came from
-rllist <- setNames(rllist,filenames)
-
-# rbind the list
-rl <- rbindlist(rllist, idcol="filename")
-
-rl$bin <- gsub(".*rl_|.txt.*", "",rl$filename)
-head(rl)
-
-#Creating csv file ith all starting locations
-write.csv(rl, file="./output/release_locations.csv", row.names = F)
-
-
-### [2b] Creating map of release locations
-release_points <- subset(rl, select = c(long0, lat0, Z0))
-release_points <- as.data.frame(release_points)
-
-xy <- release_points[,c(1,2)]
-NAD_projection <- proj4string(grid)
-My_BC_projection <- CRS("+proj=aea +lat_1=47 +lat_2=54 +lat_0=40 +lon_0=-130 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0 ")
-
-release_larvae <- SpatialPointsDataFrame(coords = xy, data = release_points, proj4string = CRS(NAD_projection))
-release_larvae <- spTransform(release_larvae, My_BC_projection) #use your custom BC projection for this
-plot(release_larvae)
-
-#Associate points with where they were released from
-require(spatialEco)
-release_larvae_map <- point.in.poly(release_larvae, ConPoly)
-head(release_larvae_map@data)
-plot(release_larvae_map)
-
-#write out points
-writeOGR(release_larvae_map, dsn = "./output", layer = "release_points", driver = "ESRI Shapefile", overwrite = TRUE)
-
-
-
-########################################################################
-########################################################################
-#[3] Identifying settlement locations and linking to release locations
-
-# List the particle tracking files for that particular year and pld
-year <- 1999
-pld <- 120
-
-#Acquiring files
-filenames <- list.files(path=paste0("./cuke_present/ConData/G",year), pattern=glob2rx(paste0("*para    1",formatC(pld+1, width = 3, format = "d", flag = "0"),"*")), full.names=TRUE,recursive=T)
-
-# load all files into a list, read_csv is much faster than read.csv
-datalist <- lapply(filenames, read_csv,
-                   col_names = c("long","lat","Z","Out","site"),
-                   col_types = cols("d","d","d","i","i")
-                   )
-
-# set the names of the items in the list, so that you know which file it came from
-datalist <- setNames(datalist,filenames)
-
-# rbind the list
-dataset <- rbindlist(datalist, idcol="filename")
-dataset$site <- NA
-rm(datalist)
-
-#Reshaping dataset to take filename info and turning it into columns
-dataset <- dataset %>%
-  mutate(temp=substr(filename,24,nchar(filename))) %>%
-  separate(temp,c("temp_type_year","rday","bin","time"),"/",convert=TRUE) %>% 
-  separate(temp_type_year,c("type","year"),sep=1,convert=TRUE) %>% 
-  mutate(time=as.integer(substr(time,12,15)))
-
-#Linking release locations to settlement locations based on bin
-for(i in unique(dataset$bin)){
-  x <- rl$bin==i
-  y <- dataset$bin==i
-  dataset$long0[y] <- rl$long0[x]
-  dataset$lat0[y] <- rl$lat0[x]
-  dataset$Z0[y] <- rl$Z0[x]
-  dataset$delay[y] <- rl$delay[x]
-  dataset$site0[y] <- rl$site0[x]
-}
-head(dataset)
-View(dataset)
-
-#Giving each larvae a unique ID
-Con_df <- dataset
-Con_df <- subset(Con_df, select = -c(filename, Out, site, time))
-Con_df$larvae_ID <- row.names(Con_df) 
-
-Release_df <- subset(Con_df, select = c(long0, lat0, Z0, larvae_ID))
-Settle_df <- subset(Con_df, select = c(long, lat, Z, larvae_ID))
+################################################################################################
+################################################################################################
+################################################################################################
+################################################################################################
+################################################################################################
+################################################################################################
+################################################################################################
 
 
 
@@ -172,27 +230,6 @@ Settle_df <- subset(Con_df, select = c(long, lat, Z, larvae_ID))
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#####################extra TO BE REINSERTED
 
 
 

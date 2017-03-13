@@ -20,6 +20,7 @@ $RECYCLE.BIN/
 #CHRIS' FILES TO IGNORE SINCE THEY ARE FULL OF HUGE DATA
 ConData
 Rawdata_extracted
+output
 
 #Annoying updates
 *.Rhistory
