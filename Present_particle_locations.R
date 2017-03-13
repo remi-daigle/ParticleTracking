@@ -17,14 +17,14 @@ require(rgeos)
 require(maptools)
 #setwd("C:/Christopher_MSc/Github/ParticleTracking")
 getwd()
-#testing adding code from home computer
 
 ############################################################
 ############################################################
 ### [1] Creating connectivity grid
 
 #Loading a grid that you will divide BC ocean into
-grid <- readOGR("./cuke_present/StudyExtent", "grid")
+grid <- readOGR("./cuke_present/StudyExtent/Starting_grid", "grid")
+plot(grid)
 #Dissolve into one polygon since so you can change grid dimensions
 My_BC_projection <- CRS("+proj=aea +lat_1=47 +lat_2=54 +lat_0=40 +lon_0=-130 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0 ")
 ConPoly <- spTransform(grid, My_BC_projection) #use your custom BC projection for this
