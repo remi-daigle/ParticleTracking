@@ -65,13 +65,6 @@ plot(release_larvae)
 writeOGR(release_larvae, dsn = "./output/shapefiles", layer = "release_points", driver = "ESRI Shapefile", overwrite = TRUE)
 
 
-#Associate points with where they were released from #Do this later
-#require(spatialEco)
-#release_larvae_map <- point.in.poly(release_larvae, ConPoly)
-#head(release_larvae_map@data)
-#plot(release_larvae_map)
-
-
 ########################################################################
 ########################################################################
 #[3] Identifying settlement locations and linking to release locations
@@ -130,15 +123,52 @@ rm(x,y,i)
 Con_df <- dataset
 Con_df <- subset(Con_df, select = c(long0, lat0, Z0, long, lat, Z, year, rday))
 Con_df$larvae_ID <- row.names(Con_df)
-View(Con_df)
 
 #Write out Con_df - takes a long time
 write.csv(Con_df, "./output/connectivity_tables/Con_df.csv", row.names = F)
+
+
+########################################################################
+########################################################################
+#[4] Setting up study extent you will be using to clip your larval release points to your BC study extent
+
+#Loading Remi's grid where larvae were released
+grid <- readOGR("./cuke_present/StudyExtent/Starting_grid", "grid")
+#Dissolve into one polygon since so you can change grid dimensions
+My_BC_projection <- CRS("+proj=aea +lat_1=47 +lat_2=54 +lat_0=40 +lon_0=-130 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0 ")
+ConPoly <- spTransform(grid, My_BC_projection) #use your custom BC projection for this
+ConPoly <- gUnaryUnion(ConPoly)
+
+Ecozones <- readOGR("./cuke_present/StudyExtent/BC_Ecozones", "Ecozones_BC")
+
+#Clipping to your study extent
+
+
+
+########################################################################
+########################################################################
+#[4] Creating connectivity matrices from Con_df dataframe
 
 #Showing where each larvae begings and ends
 Release_df <- subset(Con_df, select = c(long0, lat0, Z0, larvae_ID))
 Settle_df <- subset(Con_df, select = c(long, lat, Z, larvae_ID, year, rday))
 
+
+#Associate points with where they were released from
+xy <- Release_df[,c(1,2)]
+
+Released_larvae <- SpatialPointsDataFrame(coords = xy, data = Release_df, proj4string = CRS(NAD_projection))
+Released_larvae <- spTransform(Released_larvae, My_BC_projection) #use your custom BC projection for this
+plot(Released_larvae)
+
+#write out points
+writeOGR(release_larvae, dsn = "./output/shapefiles", layer = "release_points", driver = "ESRI Shapefile", overwrite = TRUE)
+
+
+
+require(spatialEco)
+Release_df <- point.in.poly(release_larvae, ConPoly)
+#head(release_larvae_map@data)
 
 
 
