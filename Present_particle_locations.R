@@ -120,6 +120,7 @@ for(i in unique(dataset$bin)){
 }
 head(dataset)
 proc.time() - ptm
+rm(x,y,i)
 
 #Write out dataset - takes a long time
 #write.csv(dataset, "./output/connectivity_tables/dataset.csv", row.names = F) #6 minutes
@@ -134,7 +135,7 @@ View(Con_df)
 #Write out Con_df - takes a long time
 write.csv(Con_df, "./output/connectivity_tables/Con_df.csv", row.names = F)
 
-
+#Showing where each larvae begings and ends
 Release_df <- subset(Con_df, select = c(long0, lat0, Z0, larvae_ID))
 Settle_df <- subset(Con_df, select = c(long, lat, Z, larvae_ID, year, rday))
 
