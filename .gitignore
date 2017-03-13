@@ -24,6 +24,7 @@ output
 
 #Annoying updates
 *.Rhistory
+*.Rproj.user
 
 # =========================
 # Operating System Files
