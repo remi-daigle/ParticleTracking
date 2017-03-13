@@ -3,10 +3,11 @@ rm(list=ls())
 
 ###################TABLE OF CONTENTS
 
-###[1] Creating grid that will be used for connectivity
-###[2] Identifying release locations and their place in grid
-###[3] Identifying settlement locations and linking to release locations
-
+###[1] Loading up larval release points
+###[2] Identifying settlement locations and linking to release locations
+###[3] Setting up study extent you will be using to clip your larval release points to your BC study extent
+###[4] Creating connectivity matrices from Con_df dataframe
+###
 
 #load in required packages
 require(data.table)
@@ -21,7 +22,7 @@ getwd()
 
 ########################################################################
 ########################################################################
-### [2] Loading up larval release points
+### [1] Loading up larval release points
 
 #Acquiring files
 filenames <- list.files(path = "./cuke_present/ReleaseLocations", pattern="rl_.", full.names=TRUE,recursive=T)
@@ -46,7 +47,7 @@ rm(rllist)
 write.csv(rl, file="./output/release_settlement/release_locations.csv", row.names = F)
 
 
-### [2b] Creating map of release locations
+### [1b] Creating map of release locations
 release_points <- subset(rl, select = c(long0, lat0, Z0))
 release_points <- as.data.frame(release_points)
 
@@ -67,7 +68,7 @@ writeOGR(release_larvae, dsn = "./output/shapefiles", layer = "release_points", 
 
 ########################################################################
 ########################################################################
-#[3] Identifying settlement locations and linking to release locations
+#[2] Identifying settlement locations and linking to release locations
 
 # List the particle tracking files for that particular year and pld
 year <- 1999
@@ -130,23 +131,7 @@ write.csv(Con_df, "./output/connectivity_tables/Con_df.csv", row.names = F)
 
 ########################################################################
 ########################################################################
-#[4] Setting up study extent you will be using to clip your larval release points to your BC study extent
-
-#Loading Remi's grid where larvae were released
-grid <- readOGR("./cuke_present/StudyExtent/Starting_grid", "grid")
-#Dissolve into one polygon since so you can change grid dimensions
-My_BC_projection <- CRS("+proj=aea +lat_1=47 +lat_2=54 +lat_0=40 +lon_0=-130 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0 ")
-ConPoly <- spTransform(grid, My_BC_projection) #use your custom BC projection for this
-ConPoly <- gUnaryUnion(ConPoly)
-plot(ConPoly)
-ConPoly@proj4string
-Ecozones@proj4string
-##Adding dataframe to convert back to SpatialPolygonsDataFrame - if need be....
-#ConPoly_ID <- row.names(ConPoly)
-#ConPoly_ID <- as.data.frame(ConPoly_ID)
-## And add the data back in
-#ConPoly <- SpatialPolygonsDataFrame(ConPoly, ConPoly_ID)
-#rm(ConPoly_ID)
+#[3] Setting up study extent you will be using to clip your larval release points to your BC study extent
 
 
 #Clipping to your study extent
@@ -155,9 +140,26 @@ Ecozones <- readOGR("./cuke_present/StudyExtent/BC_Ecozones", "Ecozones_BC")
 Ecozones@data$Clipping <- c(1,2,99,3)
 Ecozones@data
 Ecozones <- Ecozones[Ecozones$Clipping < 99,]
-plot(Ecozones, add = T)
-require(sp)
-Ecozones_new <- over(grid, Ecozones)
+plot(Ecozones)
+
+#Loading Remi's grid where larvae were released
+grid <- readOGR("./cuke_present/StudyExtent/Starting_grid", "grid")
+#Dissolve into one polygon since so you can change grid dimensions
+ConPoly <- spTransform(grid, Ecozones@proj4string) #use your custom BC projection for this
+ConPoly <- gUnaryUnion(ConPoly)
+plot(ConPoly)
+
+#Adding dataframe to convert back to SpatialPolygonsDataFrame - if need be....
+ConPoly_ID <- row.names(ConPoly)
+ConPoly_ID <- as.data.frame(ConPoly_ID)
+# And add the data back in
+ConPoly <- SpatialPolygonsDataFrame(ConPoly, ConPoly_ID)
+rm(ConPoly_ID)
+
+
+Ecozones_new <- gIntersection(ConPoly, Ecozones, byid = FALSE, drop_lower_td = TRUE) #This works, but you'll have to choose a shapefile that includes islands and doesn't cut-off at rivers 
+plot(Ecozones_new)
+
 
 
 
@@ -171,7 +173,7 @@ Settle_df <- subset(Con_df, select = c(long, lat, Z, larvae_ID, year, rday))
 
 
 #Associate points with where they were released from
-xy <- Release_df[,c(1,2)]
+xy <- Release_df[,c(1,2)] #make sure to store in a matrix - is this a matrix?
 
 Released_larvae <- SpatialPointsDataFrame(coords = xy, data = Release_df, proj4string = CRS(NAD_projection))
 Released_larvae <- spTransform(Released_larvae, My_BC_projection) #use your custom BC projection for this
@@ -180,22 +182,22 @@ plot(Released_larvae)
 #write out points
 writeOGR(release_larvae, dsn = "./output/shapefiles", layer = "release_points", driver = "ESRI Shapefile", overwrite = TRUE)
 
-
-
 require(spatialEco)
 Release_df <- point.in.poly(release_larvae, ConPoly)
 #head(release_larvae_map@data)
 
 
 
-
-
-
-
-
-
-
-
+##########
+#########
+########
+#######
+######
+#####
+####
+###
+##
+#END
 
 
 
@@ -274,6 +276,7 @@ writeOGR(ConPoly, dsn = "./output", "ConPoly",
 
 
 
+My_BC_projection <- CRS("+proj=aea +lat_1=47 +lat_2=54 +lat_0=40 +lon_0=-130 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0 ")
 
 
 
