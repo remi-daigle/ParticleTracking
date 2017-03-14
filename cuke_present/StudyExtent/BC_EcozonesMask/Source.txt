@@ -1,0 +1,10 @@
+Starting with the Ecozones shapefile (in this folder, downloaded from:
+
+http://www.ccea.org/ecozones-downloads/
+
+wayback: https://web.archive.org/web/20160115175641/http://www.ccea.org/ecozones-downloads/ (January 16 2016) )
+
+1. Remove Offshore ecozone
+2. Union polygons, uncheck "Create Gap" box
+3. Create more polygons around estuaries to expand mask around shallow water
+4. May have to do a few more Unions and Dissolves to get one single polygon
