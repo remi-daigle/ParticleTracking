@@ -44,7 +44,7 @@ head(rl)
 rm(rllist)
 
 #Creating csv file ith all starting locations
-write.csv(rl, file="./output/release_settlement/release_locations.csv", row.names = F)
+write.csv(rl, file="./output/release_settlement/Release_lat_long.csv", row.names = F)
 
 
 ### [1b] Creating map of release locations
@@ -92,9 +92,8 @@ dataset$site <- NA
 rm(datalist)
 
 
-#This process takes a long time ~
+###This process takes a long time ~ 5 - 10 minutes
 
-ptm <- proc.time()
 #Reshaping dataset to take filename info and turning it into columns
 dataset <- dataset %>%
   mutate(temp=substr(filename,24,nchar(filename))) %>%
@@ -113,12 +112,11 @@ for(i in unique(dataset$bin)){
   dataset$site0[y] <- rl$site0[x]
 }
 head(dataset)
-proc.time() - ptm
-rm(x,y,i)
+rm(filenames,x,y,i)
 
 #Write out dataset - takes a long time
 #write.csv(dataset, "./output/connectivity_tables/dataset.csv", row.names = F) #6 minutes
-
+dataset_spare <- dataset
 
 #Add larvae IDs to dataset
 Con_df <- dataset
@@ -127,7 +125,7 @@ Con_df$larvae_ID <- row.names(Con_df)
 
 #Write out Con_df - takes a long time
 write.csv(Con_df, "./output/connectivity_tables/Con_df.csv", row.names = F)
-
+#rm(dataset)
 
 ########################################################################
 ########################################################################
@@ -139,7 +137,7 @@ Ecozone_mask <- readOGR("./cuke_present/StudyExtent/BC_EcozonesMask", "Ecozone_m
 #Loading Remi's grid where larvae were released
 grid <- readOGR("./cuke_present/StudyExtent/Starting_grid", "grid")
 #Dissolve into one polygon since so you can change grid dimensions
-grid <- spTransform(grid, Ecozone_mask@proj4string) #use your custom BC projection for this
+grid <- spTransform(grid, My_BC_projection) #I think this works fine, if not use: Ecozone_mask@proj4string
 grid <- gUnaryUnion(grid)
 
 #Intersecting
@@ -160,7 +158,6 @@ projection(r) <- proj4string(ConPoly)
 res(r) <- 3000
 
 ConGrid <- rasterize(ConPoly, r) #5 seconds
-plot(ConGrid)
 rm(r)
 
 #Convert back to polygon for useable shapefile
@@ -181,13 +178,12 @@ plot(ConPoly)
 Release_df <- subset(Con_df, select = c(long0, lat0, Z0, larvae_ID))
 Settle_df <- subset(Con_df, select = c(long, lat, Z, larvae_ID, year, rday))
 
-
 #Associate points with where they were released from
-xy <- Release_df[,c(1,2)] #make sure to store in a matrix - is this a matrix?
+xy <- subset(Release_df, select = c(long0, lat0))
 
+write.csv(xy, "C:/Christopher_MSc/temp/xy.csv", row.names = F)
 Released_larvae <- SpatialPointsDataFrame(coords = xy, data = Release_df, proj4string = CRS(NAD_projection))
 Released_larvae <- spTransform(Released_larvae, My_BC_projection) #use your custom BC projection for this
-plot(Released_larvae)
 
 #write out points
 writeOGR(release_larvae, dsn = "./output/shapefiles", layer = "release_points", driver = "ESRI Shapefile", overwrite = TRUE)
