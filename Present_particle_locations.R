@@ -48,22 +48,22 @@ write.csv(rl, file="./output/release_settlement/Release_lat_long.csv", row.names
 
 
 ### [1b] Creating map of release locations
-release_points <- subset(rl, select = c(long0, lat0, Z0))
-release_points <- as.data.frame(release_points)
+#release_points <- subset(rl, select = c(long0, lat0, Z0))
+#release_points <- as.data.frame(release_points)
 
-xy <- release_points[,c(1,2)]
-grid <- readOGR("./cuke_present/StudyExtent/Starting_grid", "grid") #Using Remi's grid to get NAD projection
-NAD_projection <- proj4string(grid)
-My_BC_projection <- CRS("+proj=aea +lat_1=47 +lat_2=54 +lat_0=40 +lon_0=-130 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0 ")
+#xy <- release_points[,c(1,2)]
+#grid <- readOGR("./cuke_present/StudyExtent/Starting_grid", "grid") #Using Remi's grid to get NAD projection
+#NAD_projection <- proj4string(grid)
+#My_BC_projection <- CRS("+proj=aea +lat_1=47 +lat_2=54 +lat_0=40 +lon_0=-130 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0 ")
 
 
-release_larvae <- SpatialPointsDataFrame(coords = xy, data = release_points, proj4string = CRS(NAD_projection))
-release_larvae <- spTransform(release_larvae, My_BC_projection) #use your custom BC projection for this
-rm(grid, xy)
-plot(release_larvae)
+#release_larvae <- SpatialPointsDataFrame(coords = xy, data = release_points, proj4string = CRS(NAD_projection))
+#release_larvae <- spTransform(release_larvae, My_BC_projection) #use your custom BC projection for this
+#rm(grid, xy)
+#plot(release_larvae)
 
 #write out points
-writeOGR(release_larvae, dsn = "./output/shapefiles", layer = "Released_locations", driver = "ESRI Shapefile", overwrite = TRUE)
+#writeOGR(release_larvae, dsn = "./output/shapefiles", layer = "Released_locations", driver = "ESRI Shapefile", overwrite = TRUE)
 
 
 ########################################################################
@@ -101,6 +101,19 @@ dataset <- dataset %>%
   separate(temp_type_year,c("type","year"),sep=1,convert=TRUE) %>% 
   mutate(time=as.integer(substr(time,12,15)))
 
+
+#Testing combining dataset with release locations
+dataset2 <- dataset
+rl2 <- rl
+
+dataset2$long0[rl$bin==1] <- rl2$long0[rl$bin==1]
+dataset2$lat0[rl$bin==1] <- rl2$lat0[rl$bin==1]
+dataset2$Z0[rl$bin==1] <- rl2$Z0[rl$bin==1]
+dataset2$delay[rl$bin==1] <- rl2$delay[rl$bin==1]
+dataset2$site0[rl$bin==1] <- rl2$site0[rl$bin==1]
+
+write.csv(dataset2, "./output/connectivity_tables/testing_dataset.csv", row.names = F)
+
 #Linking release locations to settlement locations based on bin
 for(i in unique(dataset$bin)){
   x <- rl$bin==i
@@ -115,8 +128,21 @@ head(dataset)
 rm(filenames,x,y,i)
 
 #Write out dataset - takes a long time
-#write.csv(dataset, "./output/connectivity_tables/dataset.csv", row.names = F) #6 minutes
-dataset_spare <- dataset
+write.csv(dataset, "./output/connectivity_tables/dataset.csv", row.names = F) #6 minutes
+
+
+
+#END OF CODE RELEVANT TO REMI
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+
+
+
+
 
 #Add larvae IDs to dataset
 Con_df <- dataset
