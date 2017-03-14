@@ -63,7 +63,7 @@ rm(grid, xy)
 plot(release_larvae)
 
 #write out points
-writeOGR(release_larvae, dsn = "./output/shapefiles", layer = "release_points", driver = "ESRI Shapefile", overwrite = TRUE)
+writeOGR(release_larvae, dsn = "./output/shapefiles", layer = "Released_locations", driver = "ESRI Shapefile", overwrite = TRUE)
 
 
 ########################################################################
@@ -133,33 +133,45 @@ write.csv(Con_df, "./output/connectivity_tables/Con_df.csv", row.names = F)
 ########################################################################
 #[3] Setting up study extent you will be using to clip your larval release points to your BC study extent
 
-
 #Clipping to your study extent
 Ecozone_mask <- readOGR("./cuke_present/StudyExtent/BC_EcozonesMask", "Ecozone_mask")
-#Need to remove offshore ecoregion - this is messy
-Ecozone_mask@data$Clipping <- c(1,2,99,3)
-Ecozone_mask@data
-Ecozone_mask <- Ecozone_mask[Ecozone_mask$Clipping < 99,]
-plot(Ecozone_mask)
 
 #Loading Remi's grid where larvae were released
 grid <- readOGR("./cuke_present/StudyExtent/Starting_grid", "grid")
 #Dissolve into one polygon since so you can change grid dimensions
-ConPoly <- spTransform(grid, Ecozone_mask@proj4string) #use your custom BC projection for this
-ConPoly <- gUnaryUnion(ConPoly)
-plot(ConPoly)
+grid <- spTransform(grid, Ecozone_mask@proj4string) #use your custom BC projection for this
+grid <- gUnaryUnion(grid)
 
 #Intersecting
-Study_extent <- gIntersection(ConPoly, Ecozone_mask, byid = FALSE, drop_lower_td = TRUE) #This works, but you'll have to choose a shapefile that includes islands and doesn't cut-off at rivers 
+ConPoly <- gIntersection(grid, Ecozone_mask, byid = FALSE, drop_lower_td = TRUE) #This works, but you'll have to choose a shapefile that includes islands and doesn't cut-off at rivers 
 
 #Adding dataframe so you can create a shapefile of new study extent
-Study_extent_ID <- 1 
-Study_extent <- SpatialPolygonsDataFrame(Study_extent, as.data.frame(Study_extent_ID))
-Study_extent@data
-rm(Study_extent_ID)
+ConPoly_ID <- 1 
+ConPoly <- SpatialPolygonsDataFrame(ConPoly, as.data.frame(ConPoly_ID))
+ConPoly@data
+plot(ConPoly)
+rm(grid, Ecozone_mask, ConPoly_ID)
 
 
+#Turn your study extent into raster to analyse movement between cells
+require(raster)
+r <- raster(extent(ConPoly))
+projection(r) <- proj4string(ConPoly)
+res(r) <- 3000
 
+ConGrid <- rasterize(ConPoly, r) #5 seconds
+plot(ConGrid)
+rm(r)
+
+#Convert back to polygon for useable shapefile
+ConPoly <- rasterToPolygons(ConGrid, fun=NULL, n=4, na.rm=TRUE, digits=12, dissolve=FALSE) #couple of seconds, can be much longer depending on file size
+rm(ConGrid)
+#Adding in unique IDs for each polygon
+ConPoly@data$Poly_ID <- as.numeric(row.names(ConPoly))
+#And removing useless "layer" column from attribute table
+ConPoly <- ConPoly[,!(names(ConPoly) %in% "layer")]
+head(ConPoly@data)
+plot(ConPoly)
 
 ########################################################################
 ########################################################################
@@ -216,53 +228,13 @@ Release_df <- point.in.poly(release_larvae, ConPoly)
 #####################extra TO BE REINSERTED
 
 
-#Adding dataframe to convert back to SpatialPolygonsDataFrame - if need be....
-ConPoly_ID <- row.names(ConPoly)
-ConPoly_ID <- as.data.frame(ConPoly_ID)
-# And add the data back in
-ConPoly <- SpatialPolygonsDataFrame(ConPoly, ConPoly_ID)
-rm(ConPoly_ID)
-
 
 
 ############################################################
 ############################################################
 ### [1] Creating connectivity grid
 
-#Loading a grid that you will divide BC ocean into
-grid <- readOGR("./cuke_present/StudyExtent/Starting_grid", "grid")
-plot(grid)
-#Dissolve into one polygon since so you can change grid dimensions
-My_BC_projection <- CRS("+proj=aea +lat_1=47 +lat_2=54 +lat_0=40 +lon_0=-130 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0 ")
-ConPoly <- spTransform(grid, My_BC_projection) #use your custom BC projection for this
-ConPoly <- gUnaryUnion(ConPoly)
-plot(ConPoly)
-rm(grid)
 
-#Adding dataframe to convert back to SpatialPolygonsDataFrame
-ConPoly_ID <- row.names(ConPoly)
-ConPoly_ID <- as.data.frame(ConPoly_ID)
-# And add the data back in
-ConPoly <- SpatialPolygonsDataFrame(ConPoly, ConPoly_ID)
-rm(ConPoly_ID)
-
-#Make your Connectivity grid into a raster, then convert back into a shapefile so you can see how many larvae move from release site to final location
-library(raster)
-r <- raster(extent(ConPoly))
-projection(r) <- proj4string(ConPoly)
-res(r) <- 3000
-
-ptm <- proc.time()
-ConGrid <- rasterize(ConPoly, r) #5 seconds
-proc.time() - ptm
-plot(ConGrid)
-rm(r)
-
-#Back into polygon
-ConPoly <- rasterToPolygons(ConGrid, fun=NULL, n=4, na.rm=TRUE, digits=12, dissolve=FALSE) #couple of seconds, can be much longer depending on file size
-head(ConPoly@data)
-#Adding in unique IDs for each polygon
-ConPoly@data$Poly_ID <- as.numeric(row.names(ConPoly))
 
 writeOGR(ConPoly, dsn = "./output", "ConPoly",
          driver = "ESRI Shapefile", verbose = TRUE, overwrite = TRUE, morphToESRI = TRUE)
