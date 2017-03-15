@@ -75,8 +75,8 @@ year <- 1999
 pld <- 120
 
 #Acquiring files
-# filenames <- list.files(path=paste0("./cuke_present/ConData/G",year), pattern=glob2rx(paste0("*para    1",formatC(pld+1, width = 3, format = "d", flag = "0"),"*")), full.names=TRUE,recursive=T)
-filenames <- list.files(path=paste0("F:/MPA_particles/output/G",year), pattern=glob2rx(paste0("*para    1",formatC(pld+1, width = 3, format = "d", flag = "0"),"*")), full.names=TRUE,recursive=T)
+filenames <- list.files(path=paste0("./cuke_present/ConData/G",year), pattern=glob2rx(paste0("*para    1",formatC(pld+1, width = 3, format = "d", flag = "0"),"*")), full.names=TRUE,recursive=T)
+# filenames <- list.files(path=paste0("F:/MPA_particles/output/G",year), pattern=glob2rx(paste0("*para    1",formatC(pld+1, width = 3, format = "d", flag = "0"),"*")), full.names=TRUE,recursive=T)
 
 # load all files into a list, read_csv is much faster than read.csv
 datalist <- lapply(filenames, read_csv,
@@ -97,8 +97,8 @@ rm(datalist)
 
 #Reshaping dataset to take filename info and turning it into columns
 dataset <- dataset %>%
-  # mutate(temp=substr(filename,24,nchar(filename))) %>%
-  mutate(temp=substr(filename,25,nchar(filename))) %>% # you probably want this back to 24?
+  mutate(temp=substr(filename,24,nchar(filename))) %>%
+  # mutate(temp=substr(filename,25,nchar(filename))) %>% # you probably want this back to 24?
   separate(temp,c("temp_type_year","rday","bin","time"),"/",convert=TRUE) %>% 
   separate(temp_type_year,c("type","year"),sep=1,convert=TRUE) %>% 
   mutate(time=as.integer(substr(time,9,13))-1001)
