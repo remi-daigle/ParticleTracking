@@ -39,7 +39,7 @@ rllist <- setNames(rllist,filenames)
 # rbind the list
 rl <- rbindlist(rllist, idcol="filename")
 
-rl$bin <- gsub(".*rl_|.txt.*", "",rl$filename)
+rl$bin <- as.numeric(gsub(".*rl_|.txt.*", "",rl$filename))
 head(rl)
 rm(rllist)
 
@@ -75,7 +75,8 @@ year <- 1999
 pld <- 120
 
 #Acquiring files
-filenames <- list.files(path=paste0("./cuke_present/ConData/G",year), pattern=glob2rx(paste0("*para    1",formatC(pld+1, width = 3, format = "d", flag = "0"),"*")), full.names=TRUE,recursive=T)
+# filenames <- list.files(path=paste0("./cuke_present/ConData/G",year), pattern=glob2rx(paste0("*para    1",formatC(pld+1, width = 3, format = "d", flag = "0"),"*")), full.names=TRUE,recursive=T)
+filenames <- list.files(path=paste0("F:/MPA_particles/output/G",year), pattern=glob2rx(paste0("*para    1",formatC(pld+1, width = 3, format = "d", flag = "0"),"*")), full.names=TRUE,recursive=T)
 
 # load all files into a list, read_csv is much faster than read.csv
 datalist <- lapply(filenames, read_csv,
@@ -96,21 +97,22 @@ rm(datalist)
 
 #Reshaping dataset to take filename info and turning it into columns
 dataset <- dataset %>%
-  mutate(temp=substr(filename,24,nchar(filename))) %>%
+  # mutate(temp=substr(filename,24,nchar(filename))) %>%
+  mutate(temp=substr(filename,25,nchar(filename))) %>% # you probably want this back to 24?
   separate(temp,c("temp_type_year","rday","bin","time"),"/",convert=TRUE) %>% 
   separate(temp_type_year,c("type","year"),sep=1,convert=TRUE) %>% 
-  mutate(time=as.integer(substr(time,12,15)))
+  mutate(time=as.integer(substr(time,9,13))-1001)
 
 
 #Testing combining dataset with release locations
 dataset2 <- dataset
 rl2 <- rl
 
-dataset2$long0[rl$bin==1] <- rl2$long0[rl$bin==1]
-dataset2$lat0[rl$bin==1] <- rl2$lat0[rl$bin==1]
-dataset2$Z0[rl$bin==1] <- rl2$Z0[rl$bin==1]
-dataset2$delay[rl$bin==1] <- rl2$delay[rl$bin==1]
-dataset2$site0[rl$bin==1] <- rl2$site0[rl$bin==1]
+dataset2$long0[dataset2$bin==1] <- rl2$long0[rl2$bin==1]
+dataset2$lat0[dataset2$bin==1] <- rl2$lat0[rl2$bin==1]
+dataset2$Z0[dataset2$bin==1] <- rl2$Z0[rl2$bin==1]
+dataset2$delay[dataset2$bin==1] <- rl2$delay[rl2$bin==1]
+dataset2$site0[dataset2$bin==1] <- rl2$site0[rl2$bin==1]
 
 write.csv(dataset2, "./output/connectivity_tables/testing_dataset.csv", row.names = F)
 
@@ -123,6 +125,7 @@ for(i in unique(dataset$bin)){
   dataset$Z0[y] <- rl$Z0[x]
   dataset$delay[y] <- rl$delay[x]
   dataset$site0[y] <- rl$site0[x]
+  print(paste(i,sum(x),sum(y),sum(is.na(dataset$long0)))) # this is just to show its working
 }
 head(dataset)
 rm(filenames,x,y,i)
